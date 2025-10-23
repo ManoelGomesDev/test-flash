@@ -3,16 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { Wallet, ExternalLink } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { contractConfig } from "@/lib/contract-config"
 
-interface HeaderProps {
-  account: string | null
-  isConnecting: boolean
-  onConnect: () => void
-}
+import { ConnectWallet } from "@/components/connect-wallet"
 
-export function Header({ account, isConnecting, onConnect }: HeaderProps) {
-  const CONTRACT_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
-  const ETHERSCAN_URL = `https://etherscan.io/address/${CONTRACT_ADDRESS}`
+
+
+export function Header() {
+  const CONTRACT_ADDRESS = contractConfig.address
+  const ETHERSCAN_URL = `https://sepolia.etherscan.io/address/${CONTRACT_ADDRESS}`
 
   return (
     <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -51,18 +50,8 @@ export function Header({ account, isConnecting, onConnect }: HeaderProps) {
               </a>
             </Button>
 
-            {account ? (
-              <div className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                <p className="text-sm font-mono text-primary">
-                  {account.slice(0, 6)}...{account.slice(-4)}
-                </p>
-              </div>
-            ) : (
-              <Button onClick={onConnect} disabled={isConnecting} className="gap-2">
-                <Wallet className="w-4 h-4" />
-                {isConnecting ? "Conectando..." : "Conectar Carteira"}
-              </Button>
-            )}
+
+            <ConnectWallet />
           </div>
         </div>
       </div>

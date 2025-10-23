@@ -35,7 +35,9 @@ export function RankingSection({ candidates }: RankingSectionProps) {
       <Card className="p-6 glass-card">
         <div className="space-y-4">
           {sortedCandidates.map((candidate, index) => {
-            const percentage = ((candidate.votes / totalVotes) * 100).toFixed(1)
+            const percentage = totalVotes > 0 
+              ? ((candidate.votes / totalVotes) * 100).toFixed(1) 
+              : "0.0"
 
             return (
               <div

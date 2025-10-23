@@ -1,12 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { MetricsSection } from "@/components/metrics-section"
 import { CandidatesGrid } from "@/components/candidates-grid"
 import { RankingSection } from "@/components/ranking-section"
 import { VoteConfirmationModal } from "@/components/vote-confirmation-modal"
+import { 
+  useGetAllCandidates, 
+  useGetVoteFee, 
+  useVote,
+  useUserVotingStatus 
+} from '@/hooks/use-contract'
 import { toast } from "sonner"
+import { formatEther } from 'viem'
 
 export type Candidate = {
   id: number
@@ -18,145 +25,111 @@ export type Candidate = {
 }
 
 export default function Home() {
-  const [account, setAccount] = useState<string | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
+  // Hooks do contrato
+  const { data: candidatesData, isLoading, error, refetch } = useGetAllCandidates()
+  const { data: voteFee } = useGetVoteFee()
+  const { vote, isPending, isConfirming, isSuccess, hash } = useVote()
+  const { hasVoted, votedFor, refetch: refetchVotingStatus } = useUserVotingStatus()
+  
+  // Estados locais
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    {
-      id: 1,
-      name: "Ana Silva",
-      party: "Partido Progressista",
-      image: "/professional-woman-politician.jpg",
-      votes: 1247,
-      proposals: [
-        "Investimento em educação digital e tecnologia nas escolas",
-        "Programa de incentivo à energia renovável",
-        "Criação de hub de inovação e startups",
-        "Transparência total com blockchain em gastos públicos",
-        "Modernização do transporte público com veículos elétricos",
-      ],
-    },
-    {
-      id: 2,
-      name: "Carlos Mendes",
-      party: "Partido da Inovação",
-      image: "/professional-man-politician.jpg",
-      votes: 983,
-      proposals: [
-        "Implementação de governo digital descentralizado",
-        "Programa de renda básica universal via blockchain",
-        "Incentivos fiscais para empresas de tecnologia",
-        "Criação de universidade pública de tecnologia",
-        "Sistema de saúde integrado com IA e telemedicina",
-      ],
-    },
-    {
-      id: 3,
-      name: "Marina Costa",
-      party: "Partido Sustentável",
-      image: "/professional-woman-leader.png",
-      votes: 1456,
-      proposals: [
-        "Programa de reflorestamento urbano e áreas verdes",
-        "Economia circular e gestão inteligente de resíduos",
-        "Agricultura urbana e hortas comunitárias",
-        "Mobilidade sustentável com ciclovias e transporte limpo",
-        "Educação ambiental obrigatória em todas as escolas",
-      ],
-    },
-    {
-      id: 4,
-      name: "Roberto Alves",
-      party: "Partido Digital",
-      image: "/professional-executive-man.png",
-      votes: 1089,
-      proposals: [
-        "Conectividade 5G gratuita em toda a cidade",
-        "Plataforma de participação cidadã via blockchain",
-        "Digitalização completa de serviços públicos",
-        "Programa de capacitação em tecnologia para todos",
-        "Smart city com IoT e gestão inteligente de recursos",
-      ],
-    },
-  ])
+  // Transformar dados do contrato para o formato esperado
+  const candidates: Candidate[] = candidatesData 
+    ? (candidatesData as any[]).map((c: any) => ({
+        id: Number(c.id),
+        name: c.name,
+        party: c.party,
+        image: c.imageUrl || "/placeholder.svg",
+        votes: Number(c.voteCount),
+        proposals: [c.proposal1, c.proposal2, c.proposal3].filter(Boolean),
+      }))
+    : []
 
+  // Calcular métricas
   const totalVotes = candidates.reduce((sum, c) => sum + c.votes, 0)
-  const totalRaised = totalVotes * 0.025
+  const totalRaised = voteFee ? Number(formatEther(voteFee)) * totalVotes : 0
 
-  const connectWallet = async () => {
-    setIsConnecting(true)
-    try {
-      if (typeof window.ethereum !== "undefined") {
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        })
-        setAccount(accounts[0])
-        toast.success("Carteira conectada com sucesso!", {
-          description: `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
-        })
-      } else {
-        toast.error("MetaMask não encontrada", {
-          description: "Por favor, instale a extensão MetaMask",
-        })
-      }
-    } catch (error) {
-      toast.error("Erro ao conectar carteira", {
-        description: "Tente novamente",
+  // Efeito para monitorar sucesso do voto
+  useEffect(() => {
+    if (isSuccess && hash) {
+      toast.success("Voto registrado com sucesso!", {
+        description: `Transação: ${hash.slice(0, 10)}...${hash.slice(-8)}`,
+        duration: 5000,
       })
-    } finally {
-      setIsConnecting(false)
+      
+      // Atualizar dados
+      refetch()
+      refetchVotingStatus()
+      
+      // Fechar modal
+      setIsModalOpen(false)
+      setSelectedCandidate(null)
     }
-  }
+  }, [isSuccess, hash, refetch, refetchVotingStatus])
 
   const handleVoteClick = (candidate: Candidate) => {
-    if (!account) {
-      toast.warning("Conecte sua carteira", {
-        description: "Você precisa conectar sua carteira MetaMask para votar",
+    // Verificar se o usuário já votou
+    if (hasVoted) {
+      toast.warning("Você já votou", {
+        description: "Cada endereço pode votar apenas uma vez",
       })
       return
     }
+    
     setSelectedCandidate(candidate)
     setIsModalOpen(true)
   }
 
-  const handleConfirmVote = async () => {
-    if (!selectedCandidate) return
+  const handleConfirmVote = () => {
+    if (!selectedCandidate || !voteFee) return
 
     try {
-      // Simular transação blockchain
       toast.loading("Processando voto na blockchain...", { id: "vote-tx" })
-
-      // Simular delay de transação
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Atualizar votos
-      setCandidates((prev) => prev.map((c) => (c.id === selectedCandidate.id ? { ...c, votes: c.votes + 1 } : c)))
-
-      toast.success("Voto registrado com sucesso!", {
-        id: "vote-tx",
-        description: `Você votou em ${selectedCandidate.name}. Transação: 0x${Math.random().toString(16).slice(2, 10)}...`,
-      })
-
-      setIsModalOpen(false)
-      setSelectedCandidate(null)
+      
+      // Chamar função de voto do contrato
+      vote(selectedCandidate.id, voteFee)
+      
     } catch (error) {
       toast.error("Erro ao processar voto", {
         id: "vote-tx",
-        description: "Tente novamente",
+        description: error instanceof Error ? error.message : "Tente novamente",
       })
     }
   }
 
+  // Estados de loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-lg text-muted-foreground">Carregando candidatos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-lg text-red-500">Erro ao carregar candidatos</p>
+          <p className="text-sm text-muted-foreground">Verifique sua conexão com a rede</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <Header account={account} isConnecting={isConnecting} onConnect={connectWallet} />
+      <Header />
 
       <main className="container mx-auto px-4 py-8 space-y-12">
         <MetricsSection totalVotes={totalVotes} totalRaised={totalRaised} />
 
-        <CandidatesGrid candidates={candidates} onVote={handleVoteClick} />
+        <CandidatesGrid candidates={candidates || []} onVote={handleVoteClick} />
 
         <RankingSection candidates={candidates} />
       </main>
@@ -166,6 +139,8 @@ export default function Home() {
         onClose={() => setIsModalOpen(false)}
         onConfirm={handleConfirmVote}
         candidate={selectedCandidate}
+        voteFee={voteFee}
+        isProcessing={isPending || isConfirming}
       />
     </div>
   )

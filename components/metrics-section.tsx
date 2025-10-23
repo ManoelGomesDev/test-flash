@@ -41,21 +41,6 @@ export function MetricsSection({ totalVotes, totalRaised }: MetricsSectionProps)
           </div>
         </Card>
 
-        <Card className="p-6 glass-card border-chart-2/20">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Participação</p>
-              <p className="text-4xl font-bold text-foreground">87%</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                +12% vs última eleição
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-chart-2/10 flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-chart-2" />
-            </div>
-          </div>
-        </Card>
       </div>
     </section>
   )

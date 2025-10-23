@@ -10,22 +10,34 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Coins } from "lucide-react"
+import { AlertCircle, Coins, Loader2 } from "lucide-react"
 import type { Candidate } from "@/app/page"
 import Image from "next/image"
+import { formatEther } from 'viem'
 
 interface VoteConfirmationModalProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: () => void
   candidate: Candidate | null
+  voteFee?: bigint
+  isProcessing?: boolean
 }
 
-export function VoteConfirmationModal({ isOpen, onClose, onConfirm, candidate }: VoteConfirmationModalProps) {
+export function VoteConfirmationModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  candidate, 
+  voteFee,
+  isProcessing = false 
+}: VoteConfirmationModalProps) {
   if (!candidate) return null
 
+  const formattedFee = voteFee ? formatEther(voteFee) : "0.025"
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={isProcessing ? undefined : onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl">Confirmar Voto</DialogTitle>
@@ -51,7 +63,7 @@ export function VoteConfirmationModal({ isOpen, onClose, onConfirm, candidate }:
                 <Coins className="w-5 h-5 text-primary" />
                 <span className="text-sm font-medium text-foreground">Custo do voto</span>
               </div>
-              <span className="text-lg font-bold text-primary">0.025 ETH</span>
+              <span className="text-lg font-bold text-primary">{formattedFee} ETH</span>
             </div>
 
             <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30">
@@ -65,11 +77,18 @@ export function VoteConfirmationModal({ isOpen, onClose, onConfirm, candidate }:
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
             Cancelar
           </Button>
-          <Button onClick={onConfirm} className="gap-2">
-            Confirmar Voto
+          <Button onClick={onConfirm} className="gap-2" disabled={isProcessing}>
+            {isProcessing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              'Confirmar Voto'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
