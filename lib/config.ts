@@ -1,15 +1,16 @@
 import { createConfig, http } from 'wagmi'
 import { mainnet, sepolia } from 'wagmi/chains'
-import { metaMask } from 'wagmi/connectors'
+import { metaMask, injected } from 'wagmi/connectors'
 
 export const config = createConfig({
-  chains: [mainnet, sepolia],
+  chains: [sepolia, mainnet],
   connectors: [
+    injected(),
     metaMask()
-  ]   ,
+  ],
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
+    [sepolia.id]: http('https://sepolia.infura.io/v3/a370d097f49d497e8cfe8723c02b2cc5'),
+    [mainnet.id]: http('https://cloudflare-eth.com'),
   },
-  
+  ssr: true,
 })
